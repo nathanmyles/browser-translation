@@ -5,3 +5,11 @@
 body {
   @apply bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen;
 }
+
+/* Chrome Extension popup sizing */
+@media (max-width: 600px) {
+  body {
+    width: 500px;
+    min-height: 600px;
+  }
+}

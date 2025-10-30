@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:extension": "vite build && node scripts/copy-wasm-files.js && node scripts/post-build.js && node scripts/verify-extension.js",
+    "verify": "node scripts/verify-extension.js",
     "preview": "vite preview"
   },
   "dependencies": {

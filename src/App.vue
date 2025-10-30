@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen py-8 px-4">
-    <div class="max-w-6xl mx-auto">
+  <div class="min-h-screen py-4 px-4 extension:min-h-0 extension:py-2">
+    <div class="max-w-6xl mx-auto extension:max-w-full">
       <!-- Header -->
       <header class="text-center mb-8">
         <h1 class="text-4xl font-bold text-gray-800 mb-2">
@@ -150,7 +150,22 @@
 import { ref, onMounted } from 'vue'
 import { pipeline, env } from '@huggingface/transformers'
 
-// Disable browser cache for models
+// Detect if running in Chrome extension
+const isExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id
+
+// Configure based on environment
+if (isExtension) {
+  // Chrome extension: use local WASM files to avoid CSP issues
+  env.allowLocalModels = false
+  env.allowRemoteModels = true
+  env.backends.onnx.wasm.wasmPaths = '/assets/'
+  console.log('Running in Chrome extension mode')
+} else {
+  // Web app: use default CDN settings
+  console.log('Running in web app mode')
+}
+
+// Disable browser cache for development
 env.useBrowserCache = false
 
 // Language codes for NLLB model (Facebook's No Language Left Behind)

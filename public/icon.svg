@@ -1,0 +1,5 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="24" fill="#4F46E5"/>
+  <path d="M64 24C41.9086 24 24 41.9086 24 64C24 86.0914 41.9086 104 64 104C86.0914 104 104 86.0914 104 64C104 41.9086 86.0914 24 64 24Z" fill="white" fill-opacity="0.1"/>
+  <text x="64" y="78" font-family="Arial, sans-serif" font-size="56" font-weight="bold" fill="white" text-anchor="middle">🌐</text>
+</svg>
