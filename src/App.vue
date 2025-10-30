@@ -84,19 +84,37 @@
                 placeholder="Translation will appear here..."
                 class="w-full h-24 md:h-40 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 resize-none outline-none"
               ></textarea>
-              <button 
-                v-if="translatedText"
-                @click="copyToClipboard"
-                class="absolute top-3 right-3 p-2 bg-white hover:bg-gray-100 rounded-lg shadow-sm transition-colors duration-200"
-                title="Copy to clipboard"
-              >
-                <svg v-if="!copied" class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <svg v-else class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </button>
+              <div v-if="translatedText" class="absolute top-3 right-3 flex gap-2">
+                <button 
+                  @click="speakTranslation"
+                  :disabled="isSpeaking || isLoadingTTS"
+                  class="p-2 bg-white hover:bg-gray-100 disabled:bg-gray-200 rounded-lg shadow-sm transition-colors duration-200"
+                  title="Speak translation"
+                >
+                  <svg v-if="isLoadingTTS" class="w-5 h-5 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <svg v-else-if="isSpeaking" class="w-5 h-5 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                  <svg v-else class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                </button>
+                <button 
+                  @click="copyToClipboard"
+                  class="p-2 bg-white hover:bg-gray-100 rounded-lg shadow-sm transition-colors duration-200"
+                  title="Copy to clipboard"
+                >
+                  <svg v-if="!copied" class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <svg v-else class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="flex justify-end items-center mt-2">
               <span v-if="copied" class="text-sm text-green-600">Copied!</span>
@@ -213,9 +231,13 @@ const modelLoading = ref(false)
 const loadingStatus = ref('')
 const loadingProgress = ref(0)
 const fileProgress = ref({})
+const isSpeaking = ref(false)
+const isLoadingTTS = ref(false)
 
 // Translation pipeline instance
 let translator = null
+let ttsModel = null
+let currentAudio = null
 
 const swapLanguages = () => {
   const temp = sourceLang.value
@@ -324,6 +346,86 @@ const copyToClipboard = async () => {
     }, 2000)
   } catch (err) {
     console.error('Failed to copy:', err)
+  }
+}
+
+const speakTranslation = async () => {
+  if (!translatedText.value || isSpeaking.value || isLoadingTTS.value) return
+  
+  try {
+    isLoadingTTS.value = true
+    
+    // Stop any currently playing audio
+    if (currentAudio) {
+      currentAudio.pause()
+      currentAudio = null
+    }
+    
+    // Map NLLB language codes to MMS-TTS language codes
+    const langMap = {
+      'eng_Latn': 'eng',
+      'spa_Latn': 'spa',
+      'fra_Latn': 'fra',
+      'deu_Latn': 'deu',
+      'ita_Latn': 'ita',
+      'por_Latn': 'por',
+      'rus_Cyrl': 'rus',
+      'jpn_Jpan': 'jpn',
+      'kor_Hang': 'kor',
+      'zho_Hans': 'cmn',
+      'arb_Arab': 'ara',
+      'hin_Deva': 'hin',
+      'tur_Latn': 'tur',
+      'nld_Latn': 'nld',
+      'pol_Latn': 'pol',
+    }
+    
+    const ttsLang = langMap[targetLang.value] || 'eng'
+    const modelName = `Xenova/mms-tts-${ttsLang}`
+    
+    // Initialize TTS model if not loaded or language changed
+    if (!ttsModel || ttsModel.modelName !== modelName) {
+      console.log(`Loading TTS model: ${modelName}`)
+      ttsModel = await pipeline('text-to-speech', modelName, {
+        quantized: false, // Remove this line to use the quantized version (default)
+      })
+      ttsModel.modelName = modelName // Store model name for comparison
+    }
+    
+    // Generate speech
+    const output = await ttsModel(translatedText.value)
+    
+    // Switch from loading to speaking
+    isLoadingTTS.value = false
+    isSpeaking.value = true
+    
+    // Create audio context and play
+    const audioContext = new AudioContext()
+    const audioBuffer = audioContext.createBuffer(
+      1,
+      output.audio.length,
+      output.sampling_rate
+    )
+    
+    const channelData = audioBuffer.getChannelData(0)
+    channelData.set(output.audio)
+    
+    const source = audioContext.createBufferSource()
+    source.buffer = audioBuffer
+    source.connect(audioContext.destination)
+    
+    source.onended = () => {
+      isSpeaking.value = false
+      currentAudio = null
+    }
+    
+    source.start()
+    currentAudio = source
+    
+  } catch (error) {
+    console.error('TTS error:', error)
+    isLoadingTTS.value = false
+    isSpeaking.value = false
   }
 }
 
