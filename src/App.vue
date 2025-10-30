@@ -54,17 +54,19 @@
           <!-- Source Text -->
           <div class="relative">
             <label class="block text-sm font-medium text-gray-700 mb-2">Source Text</label>
-            <div class="relative">
+            <div class="relative" @mouseenter="sourceTextFocused = true" @mouseleave="sourceTextFocused = false">
               <textarea
                 v-model="sourceText"
                 @input="handleInput"
+                @focus="sourceTextFocused = true"
+                @blur="sourceTextFocused = false"
                 placeholder="Enter text to translate..."
                 class="w-full h-24 md:h-40 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none transition"
               ></textarea>
               <button 
-                v-if="sourceText"
+                v-if="sourceText && sourceTextFocused"
                 @click="clearText"
-                class="absolute top-3 right-3 p-2 bg-white hover:bg-red-50 rounded-lg shadow-sm transition-colors duration-200"
+                class="absolute top-3 right-3 p-2 bg-white hover:bg-red-50 rounded-lg shadow-sm transition-all duration-200"
                 title="Clear text"
               >
                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,14 +79,16 @@
           <!-- Translated Text -->
           <div class="relative">
             <label class="block text-sm font-medium text-gray-700 mb-2">Translation</label>
-            <div class="relative">
+            <div class="relative" @mouseenter="translatedTextFocused = true" @mouseleave="translatedTextFocused = false">
               <textarea
                 v-model="translatedText"
                 readonly
+                @focus="translatedTextFocused = true"
+                @blur="translatedTextFocused = false"
                 placeholder="Translation will appear here..."
                 class="w-full h-24 md:h-40 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 resize-none outline-none"
               ></textarea>
-              <div v-if="translatedText" class="absolute top-3 right-3 flex gap-2">
+              <div v-if="translatedText && translatedTextFocused" class="absolute top-3 right-3 flex gap-2">
                 <button 
                   @click="speakTranslation"
                   :disabled="isSpeaking || isLoadingTTS"
@@ -233,6 +237,8 @@ const loadingProgress = ref(0)
 const fileProgress = ref({})
 const isSpeaking = ref(false)
 const isLoadingTTS = ref(false)
+const sourceTextFocused = ref(false)
+const translatedTextFocused = ref(false)
 
 // Translation pipeline instance
 let translator = null
