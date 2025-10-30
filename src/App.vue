@@ -470,23 +470,8 @@ const autoTranslateOnModelLoad = async () => {
 
   if (modelReady) {
     await translate()
-    
-    // If this was from a context menu selection, replace the text on the page
-    if (contextTabId && translatedText.value && isExtension) {
-      try {
-        await chrome.runtime.sendMessage({
-          action: 'replaceText',
-          tabId: contextTabId,
-          translatedText: translatedText.value
-        })
-        contextTabId = null // Clear after use
-        
-        // Close the popup after successful replacement
-        window.close()
-      } catch (err) {
-        console.error('Failed to replace text:', err)
-      }
-    }
+    // Note: We no longer auto-replace text from the popup
+    // The "Replace with translation" context menu option handles that via offscreen document
   } else {
     console.log('Model not ready yet, user can manually translate')
   }

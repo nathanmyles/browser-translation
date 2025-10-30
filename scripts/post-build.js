@@ -59,5 +59,21 @@ if (existsSync(contentSrc)) {
   process.exit(1);
 }
 
+// Copy offscreen.html
+const offscreenHtmlSrc = 'src/offscreen.html';
+const offscreenHtmlDest = 'dist/offscreen.html';
+
+if (existsSync(offscreenHtmlSrc)) {
+  copyFileSync(offscreenHtmlSrc, offscreenHtmlDest);
+  console.log('✅ Copied offscreen.html to dist/');
+} else {
+  console.error('❌ offscreen.html not found in src/');
+  process.exit(1);
+}
+
+// Copy offscreen.js (will be bundled by Vite, but we need the source for now)
+// Note: offscreen.js needs to be built separately as it's a module
+console.log('⚠️  Note: offscreen.js needs to be bundled separately');
+
 console.log('\n✨ Extension build complete!');
 console.log('📁 Load the "dist" folder in Chrome as an unpacked extension.');

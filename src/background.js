@@ -1,19 +1,44 @@
 // Background service worker for Chrome extension
 
+// Create offscreen document for translation
+async function setupOffscreenDocument() {
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT'],
+  });
+
+  if (existingContexts.length > 0) {
+    return; // Offscreen document already exists
+  }
+
+  await chrome.offscreen.createDocument({
+    url: 'offscreen.html',
+    reasons: ['DOM_SCRAPING'], // Using DOM_SCRAPING as it allows DOM APIs
+    justification: 'Translation model requires DOM APIs for Transformers.js',
+  });
+}
+
 // Create context menu on installation
 chrome.runtime.onInstalled.addListener(() => {
+  // Option 1: Open in popup
   chrome.contextMenus.create({
-    id: 'translateSelection',
+    id: 'translateInPopup',
     title: 'Translate "%s"',
+    contexts: ['selection']
+  });
+  
+  // Option 2: Replace directly on page
+  chrome.contextMenus.create({
+    id: 'replaceWithTranslation',
+    title: 'Replace with translation',
     contexts: ['selection']
   });
 });
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'translateSelection') {
-    const selectedText = info.selectionText;
-    
+  const selectedText = info.selectionText;
+  
+  if (info.menuItemId === 'translateInPopup') {
     // Store the selected text and tab info
     chrome.storage.local.set({ 
       selectedText: selectedText,
@@ -21,8 +46,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       timestamp: Date.now()
     });
     
-    // Open the popup (or you can open in a new tab/window)
+    // Open the popup
     chrome.action.openPopup();
+  } 
+  else if (info.menuItemId === 'replaceWithTranslation') {
+    // Ensure offscreen document exists
+    setupOffscreenDocument().then(() => {
+      // Send message to offscreen document to handle translation
+      chrome.runtime.sendMessage({
+        action: 'translateAndReplace',
+        text: selectedText,
+        tabId: tab.id
+      });
+    });
   }
 });
 
