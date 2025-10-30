@@ -132,15 +132,22 @@
 
       <!-- Model Loading Status -->
       <div v-if="modelLoading" class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div class="flex items-center gap-3">
-          <svg class="animate-spin h-5 w-5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+        <div class="flex items-start gap-3">
+          <svg class="animate-spin h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0 space-y-3">
             <p class="text-sm font-medium text-blue-900">{{ loadingStatus }}</p>
-            <div v-if="loadingProgress > 0" class="mt-2 w-full bg-blue-200 rounded-full h-2">
-              <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" :style="{ width: loadingProgress + '%' }"></div>
+            <!-- Individual file progress bars -->
+            <div v-for="(file, filename) in fileProgress" :key="filename" class="space-y-1">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-blue-800 font-mono truncate">{{ filename }}</span>
+                <span class="text-blue-600 ml-2 flex-shrink-0">{{ Math.round(file.progress) }}%</span>
+              </div>
+              <div class="w-full bg-blue-200 rounded-full h-1.5">
+                <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" :style="{ width: file.progress + '%' }"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -205,6 +212,7 @@ const copied = ref(false)
 const modelLoading = ref(false)
 const loadingStatus = ref('')
 const loadingProgress = ref(0)
+const fileProgress = ref({})
 
 // Translation pipeline instance
 let translator = null
@@ -234,15 +242,31 @@ const initializeModel = async () => {
     // Create translation pipeline with progress callback
     translator = await pipeline('translation', 'Xenova/nllb-200-distilled-600M', {
       progress_callback: (progress) => {
-        if (progress.status === 'downloading') {
-          loadingStatus.value = `Downloading model: ${progress.file}`
-          loadingProgress.value = progress.progress || 0
+        if (progress.status === 'initiate') {
+          loadingStatus.value = `Initializing model download...`
+          if (progress.file) {
+            fileProgress.value[progress.file] = { progress: 0, status: 'initiate' }
+          }
+        } else if (progress.status === 'download' || progress.status === 'progress') {
+          loadingStatus.value = `Downloading model files...`
+          if (progress.file) {
+            fileProgress.value[progress.file] = { 
+              progress: progress.progress || 0, 
+              status: 'downloading' 
+            }
+          }
+        } else if (progress.status === 'done') {
+          if (progress.file) {
+            fileProgress.value[progress.file] = { progress: 100, status: 'done' }
+          }
         } else if (progress.status === 'loading') {
           loadingStatus.value = 'Loading model into memory...'
-          loadingProgress.value = 90
         } else if (progress.status === 'ready') {
           loadingStatus.value = 'Model ready!'
-          loadingProgress.value = 100
+          // Mark all files as complete
+          Object.keys(fileProgress.value).forEach(file => {
+            fileProgress.value[file] = { progress: 100, status: 'done' }
+          })
         }
       }
     })
@@ -316,6 +340,9 @@ const waitForModel = async () => {
   return translator !== null
 }
 
+// Store tab ID for text replacement
+let contextTabId = null
+
 // Check for selected text from context menu (Chrome extension only)
 const checkForSelectedText = async () => {
   if (!isExtension) return false
@@ -324,6 +351,7 @@ const checkForSelectedText = async () => {
     const response = await chrome.runtime.sendMessage({ action: 'getSelectedText' })
     if (response && response.text && response.text.trim()) {
       sourceText.value = response.text
+      contextTabId = response.tabId
       return true
     }
   } catch (err) {
@@ -340,6 +368,23 @@ const autoTranslateOnModelLoad = async () => {
 
   if (modelReady) {
     await translate()
+    
+    // If this was from a context menu selection, replace the text on the page
+    if (contextTabId && translatedText.value && isExtension) {
+      try {
+        await chrome.runtime.sendMessage({
+          action: 'replaceText',
+          tabId: contextTabId,
+          translatedText: translatedText.value
+        })
+        contextTabId = null // Clear after use
+        
+        // Close the popup after successful replacement
+        window.close()
+      } catch (err) {
+        console.error('Failed to replace text:', err)
+      }
+    }
   } else {
     console.log('Model not ready yet, user can manually translate')
   }

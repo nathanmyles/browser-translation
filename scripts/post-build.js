@@ -47,5 +47,17 @@ if (existsSync(backgroundSrc)) {
   process.exit(1);
 }
 
+// Copy content.js (content script)
+const contentSrc = 'src/content.js';
+const contentDest = 'dist/content.js';
+
+if (existsSync(contentSrc)) {
+  copyFileSync(contentSrc, contentDest);
+  console.log('✅ Copied content.js to dist/');
+} else {
+  console.error('❌ content.js not found in src/');
+  process.exit(1);
+}
+
 console.log('\n✨ Extension build complete!');
 console.log('📁 Load the "dist" folder in Chrome as an unpacked extension.');
