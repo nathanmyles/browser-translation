@@ -1,20 +1,32 @@
 # Browser Translation
 
-A modern translation tool built with Vue 3, Tailwind CSS, and Transformers.js. Translation runs **entirely in your browser** using machine learning models - no API keys or server required!
+A Chrome extension that provides **AI-powered translation running entirely locally in your browser** using Transformers.js and the NLLB-200 model. No data is sent to external servers - everything happens on your device.
 
-Available as both a **web app** and a **Chrome extension**.
+Also available as a **standalone web app**.
 
 ## Features
 
-- ✨ **Clean and modern UI** with responsive design
-- 🌍 **15+ languages** supported (English, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean, Chinese, Arabic, Hindi, Turkish, Dutch, Polish)
-- 🤖 **AI-powered translation** using Facebook's NLLB-200 model via Transformers.js
-- 🔒 **100% private** - all translation happens locally in your browser
-- 📊 **Real-time progress tracking** for model loading
-- 🔄 **Language swap** functionality
-- 📋 **Copy to clipboard** with visual feedback
-- 📏 **Character counter** for both source and translated text
-- ⚡ **No API keys required** - completely free to use
+### Translation Methods
+- 🔄 **"Translate '[text]'"** - Right-click selected text to open popup with translation
+- ⚡ **"Replace with translation"** - Instantly replaces selected text on the webpage without opening UI
+- 🎯 **Context menu integration** - Quick access from any selected text
+
+### Language Support
+- 🌍 **15 languages** - English, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean, Chinese (Simplified), Arabic, Hindi, Turkish, Dutch, Polish
+- 🎨 **Visual language selection** - Context menu with flags and current selection indicators
+- 💾 **Remembers preferences** - Your language choices are saved across sessions
+- 🔄 **Language swap** - Quickly reverse translation direction
+
+### Text-to-Speech
+- 🔊 **Multilingual TTS** - Hear translations spoken in the target language
+- 🎙️ **15 language models** - Automatically uses correct MMS-TTS model
+- ⏳ **Visual feedback** - Loading spinner and speaking indicator
+
+### Privacy & Performance
+- 🔒 **100% private** - All translation happens locally in your browser
+- 📦 **Offline capable** - Works without internet after initial model download
+- 🚫 **No tracking** - No data collection or external API calls
+- ⚡ **Fast** - Models cached locally for instant subsequent translations
 
 ## 🚀 Quick Start
 
@@ -72,19 +84,47 @@ npm run build:extension
 
 ## Tech Stack
 
-- **Vue 3** (Composition API)
-- **Tailwind CSS** for styling
-- **Vite** for build tooling
-- **Transformers.js** for ML-powered translation
-- **NLLB-200** translation model by Meta AI
+- **Vue 3** (Composition API) - Reactive UI framework
+- **Tailwind CSS** - Utility-first styling
+- **Vite** - Fast build tooling
+- **Transformers.js** - Run ML models in the browser
+- **NLLB-200-distilled-600M** - Translation model by Meta AI
+- **MMS-TTS** - Multilingual text-to-speech models
+- **Chrome Extension Manifest V3** - Modern extension architecture
 
 ## Usage
 
-1. Select source and target languages
-2. Enter text to translate
-3. Click "Translate" (the model will download on first use)
-4. Copy the translation or swap languages to translate back
+### As Chrome Extension
+
+1. **Select text** on any webpage
+2. **Right-click** to open context menu
+3. Choose an option:
+   - **"Translate '[text]'"** - Opens popup with translation, copy button, and text-to-speech
+   - **"Replace with translation"** - Instantly replaces the selected text on the page
+4. **Change languages** via context menu:
+   - **"Translate From"** - Select source language
+   - **"Translate To"** - Select target language
+
+### As Web App
+
+1. Open the app in your browser
+2. Select source and target languages from dropdowns
+3. Enter or paste text to translate
+4. Click "Translate" button
+5. Use copy button or text-to-speech to hear the translation
+
+### First Use
+
+The first time you use the extension, the translation model (~300MB) and TTS models will be downloaded and cached. This may take a few minutes depending on your connection. After that, all translations work offline and are instant!
+
+## Architecture
+
+- **Popup (Vue.js)** - Main UI for viewing translations with copy and TTS features
+- **Offscreen Document** - Handles background translations for instant text replacement
+- **Background Service Worker** - Manages context menus, coordinates components, and handles language preferences
+- **Content Script** - Handles text replacement on web pages
 
 ## Browser Compatibility
 
-Requires a modern browser with WebAssembly support (Chrome, Firefox, Safari, Edge)
+- **Chrome/Edge** - Full support (Manifest V3)
+- **Web app** - Any modern browser with WebAssembly support (Chrome, Firefox, Safari, Edge)
