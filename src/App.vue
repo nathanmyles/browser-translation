@@ -197,7 +197,7 @@ const languages = [
 ]
 
 const sourceLang = ref('eng_Latn')
-const targetLang = ref('spa_Latn')
+const targetLang = ref('fra_Latn')
 const sourceText = ref('')
 const translatedText = ref('')
 const isTranslating = ref(false)
