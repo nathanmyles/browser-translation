@@ -17,8 +17,38 @@ async function setupOffscreenDocument() {
   });
 }
 
-// Create context menu on installation
-chrome.runtime.onInstalled.addListener(() => {
+// Language options
+const languages = [
+  { code: 'eng_Latn', name: 'English', flag: '🇬🇧' },
+  { code: 'spa_Latn', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'fra_Latn', name: 'French', flag: '🇫🇷' },
+  { code: 'deu_Latn', name: 'German', flag: '🇩🇪' },
+  { code: 'ita_Latn', name: 'Italian', flag: '🇮🇹' },
+  { code: 'por_Latn', name: 'Portuguese', flag: '🇵🇹' },
+  { code: 'rus_Cyrl', name: 'Russian', flag: '🇷🇺' },
+  { code: 'jpn_Jpan', name: 'Japanese', flag: '🇯🇵' },
+  { code: 'kor_Hang', name: 'Korean', flag: '🇰🇷' },
+  { code: 'zho_Hans', name: 'Chinese (Simplified)', flag: '🇨🇳' },
+  { code: 'arb_Arab', name: 'Arabic', flag: '🇸🇦' },
+  { code: 'hin_Deva', name: 'Hindi', flag: '🇮🇳' },
+  { code: 'tur_Latn', name: 'Turkish', flag: '🇹🇷' },
+  { code: 'nld_Latn', name: 'Dutch', flag: '🇳🇱' },
+  { code: 'pol_Latn', name: 'Polish', flag: '🇵🇱' },
+];
+
+// Create context menus
+async function createContextMenus() {
+  // Get saved language preferences
+  const prefs = await chrome.storage.local.get(['languagePreferences']);
+  const sourceLang = prefs.languagePreferences?.sourceLang || 'eng_Latn';
+  const targetLang = prefs.languagePreferences?.targetLang || 'fra_Latn';
+  
+  const sourceLanguage = languages.find(l => l.code === sourceLang) || languages[0];
+  const targetLanguage = languages.find(l => l.code === targetLang) || languages[2];
+  
+  // Remove all existing menus first
+  await chrome.contextMenus.removeAll();
+  
   // Option 1: Open in popup
   chrome.contextMenus.create({
     id: 'translateInPopup',
@@ -32,10 +62,63 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Replace with translation',
     contexts: ['selection']
   });
+  
+  // Separator
+  chrome.contextMenus.create({
+    id: 'separator1',
+    type: 'separator',
+    contexts: ['selection']
+  });
+  
+  // Translate From menu
+  chrome.contextMenus.create({
+    id: 'translateFrom',
+    title: `Translate From: ${sourceLanguage.flag} ${sourceLanguage.name}`,
+    contexts: ['selection']
+  });
+  
+  // Add language options for "Translate From"
+  languages.forEach(lang => {
+    chrome.contextMenus.create({
+      id: `from_${lang.code}`,
+      parentId: 'translateFrom',
+      title: `${lang.flag} ${lang.name}${lang.code === sourceLang ? ' ✓' : ''}`,
+      contexts: ['selection']
+    });
+  });
+  
+  // Translate To menu
+  chrome.contextMenus.create({
+    id: 'translateTo',
+    title: `Translate To: ${targetLanguage.flag} ${targetLanguage.name}`,
+    contexts: ['selection']
+  });
+  
+  // Add language options for "Translate To"
+  languages.forEach(lang => {
+    chrome.contextMenus.create({
+      id: `to_${lang.code}`,
+      parentId: 'translateTo',
+      title: `${lang.flag} ${lang.name}${lang.code === targetLang ? ' ✓' : ''}`,
+      contexts: ['selection']
+    });
+  });
+}
+
+// Create context menu on installation
+chrome.runtime.onInstalled.addListener(() => {
+  createContextMenus();
+});
+
+// Recreate menus when language preferences change
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local' && changes.languagePreferences) {
+    createContextMenus();
+  }
 });
 
 // Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const selectedText = info.selectionText;
   
   if (info.menuItemId === 'translateInPopup') {
@@ -50,14 +133,47 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     chrome.action.openPopup();
   } 
   else if (info.menuItemId === 'replaceWithTranslation') {
+    // Get current language preferences
+    const prefs = await chrome.storage.local.get(['languagePreferences']);
+    const sourceLang = prefs.languagePreferences?.sourceLang || 'eng_Latn';
+    const targetLang = prefs.languagePreferences?.targetLang || 'fra_Latn';
+    
     // Ensure offscreen document exists
     setupOffscreenDocument().then(() => {
-      // Send message to offscreen document to handle translation
+      // Send message to offscreen document to handle translation with language settings
       chrome.runtime.sendMessage({
         action: 'translateAndReplace',
         text: selectedText,
-        tabId: tab.id
+        tabId: tab.id,
+        sourceLang: sourceLang,
+        targetLang: targetLang
       });
+    });
+  }
+  // Handle "Translate From" language selection
+  else if (info.menuItemId.startsWith('from_')) {
+    const langCode = info.menuItemId.replace('from_', '');
+    const prefs = await chrome.storage.local.get(['languagePreferences']);
+    const currentPrefs = prefs.languagePreferences || {};
+    
+    await chrome.storage.local.set({
+      languagePreferences: {
+        ...currentPrefs,
+        sourceLang: langCode
+      }
+    });
+  }
+  // Handle "Translate To" language selection
+  else if (info.menuItemId.startsWith('to_')) {
+    const langCode = info.menuItemId.replace('to_', '');
+    const prefs = await chrome.storage.local.get(['languagePreferences']);
+    const currentPrefs = prefs.languagePreferences || {};
+    
+    await chrome.storage.local.set({
+      languagePreferences: {
+        ...currentPrefs,
+        targetLang: langCode
+      }
     });
   }
 });

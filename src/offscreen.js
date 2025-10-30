@@ -73,8 +73,12 @@ async function translate(text, srcLang, tgtLang) {
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'translateAndReplace') {
-    // Perform translation and send back to replace
-    translate(request.text, request.sourceLang, request.targetLang)
+    // Use language settings passed from background script
+    const srcLang = request.sourceLang || sourceLang;
+    const tgtLang = request.targetLang || targetLang;
+
+    // Perform translation with provided language settings
+    translate(request.text, srcLang, tgtLang)
       .then(translatedText => {
         // Send message to background to replace text
         chrome.runtime.sendMessage({
@@ -106,7 +110,7 @@ function updateStatus(message) {
   if (statusEl) {
     statusEl.textContent = message;
   }
-  console.log('Offscreen:', message);
+  console.error('Offscreen:', message);
 }
 
 // Initialize model on load
