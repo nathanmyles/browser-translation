@@ -54,20 +54,22 @@
           <!-- Source Text -->
           <div class="relative">
             <label class="block text-sm font-medium text-gray-700 mb-2">Source Text</label>
-            <textarea
-              v-model="sourceText"
-              @input="handleInput"
-              placeholder="Enter text to translate..."
-              class="w-full h-24 md:h-40 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none transition"
-            ></textarea>
-            <div class="flex justify-between items-center mt-2">
-              <span class="text-sm text-gray-500">{{ sourceText.length }} characters</span>
+            <div class="relative">
+              <textarea
+                v-model="sourceText"
+                @input="handleInput"
+                placeholder="Enter text to translate..."
+                class="w-full h-24 md:h-40 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none transition"
+              ></textarea>
               <button 
                 v-if="sourceText"
                 @click="clearText"
-                class="text-sm text-red-500 hover:text-red-700 transition"
+                class="absolute top-3 right-3 p-2 bg-white hover:bg-red-50 rounded-lg shadow-sm transition-colors duration-200"
+                title="Clear text"
               >
-                Clear
+                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </button>
             </div>
           </div>
@@ -96,8 +98,7 @@
                 </svg>
               </button>
             </div>
-            <div class="flex justify-between items-center mt-2">
-              <span class="text-sm text-gray-500">{{ translatedText.length }} characters</span>
+            <div class="flex justify-end items-center mt-2">
               <span v-if="copied" class="text-sm text-green-600">Copied!</span>
             </div>
           </div>
@@ -110,19 +111,19 @@
             :disabled="!sourceText || isTranslating || modelLoading"
             class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md transition-colors duration-200"
           >
-            <span v-if="modelLoading" class="inline-flex items-center justify-center gap-2">
-              <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Loading Model...
-            </span>
-            <span v-else-if="isTranslating" class="inline-flex items-center justify-center gap-2">
+            <span v-if="isTranslating" class="inline-flex items-center justify-center gap-2">
               <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               Translating...
+            </span>
+            <span v-else-if="modelLoading" class="inline-flex items-center justify-center gap-2">
+              <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Loading Model...
             </span>
             <span v-else>Translate</span>
           </button>
@@ -261,6 +262,9 @@ const translate = async () => {
   
   try {
     isTranslating.value = true
+    
+    // Give the browser time to update the UI before blocking with translation
+    await new Promise(resolve => setTimeout(resolve, 50))
     
     // Initialize model if not already loaded
     if (!translator) {
