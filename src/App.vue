@@ -180,7 +180,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { pipeline, env } from '@huggingface/transformers'
 
 // Detect if running in Chrome extension
@@ -247,6 +247,45 @@ const swapLanguages = () => {
   const tempText = sourceText.value
   sourceText.value = translatedText.value
   translatedText.value = tempText
+  
+  // Save the new language selections
+  saveLanguagePreferences()
+}
+
+// Save language preferences
+const saveLanguagePreferences = () => {
+  const preferences = {
+    sourceLang: sourceLang.value,
+    targetLang: targetLang.value
+  }
+  
+  if (isExtension) {
+    chrome.storage.local.set({ languagePreferences: preferences })
+  } else {
+    localStorage.setItem('languagePreferences', JSON.stringify(preferences))
+  }
+}
+
+// Load language preferences
+const loadLanguagePreferences = async () => {
+  try {
+    if (isExtension) {
+      const result = await chrome.storage.local.get(['languagePreferences'])
+      if (result.languagePreferences) {
+        sourceLang.value = result.languagePreferences.sourceLang || sourceLang.value
+        targetLang.value = result.languagePreferences.targetLang || targetLang.value
+      }
+    } else {
+      const saved = localStorage.getItem('languagePreferences')
+      if (saved) {
+        const preferences = JSON.parse(saved)
+        sourceLang.value = preferences.sourceLang || sourceLang.value
+        targetLang.value = preferences.targetLang || targetLang.value
+      }
+    }
+  } catch (err) {
+    console.log('Could not load language preferences:', err)
+  }
 }
 
 const handleInput = () => {
@@ -477,8 +516,27 @@ const autoTranslateOnModelLoad = async () => {
   }
 }
 
+// Watch for language changes and save preferences
+watch([sourceLang, targetLang], () => {
+  saveLanguagePreferences()
+  
+  // Also update offscreen document if in extension mode
+  if (isExtension) {
+    chrome.runtime.sendMessage({
+      action: 'setLanguages',
+      sourceLang: sourceLang.value,
+      targetLang: targetLang.value
+    }).catch(() => {
+      // Offscreen document might not be loaded yet, that's okay
+    })
+  }
+})
+
 // Initialize model on component mount
 onMounted(async () => {
+  // Load saved language preferences first
+  await loadLanguagePreferences()
+  
   // Start preloading the model
   initializeModel()
   
