@@ -10,7 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.0"
+    "vue": "^3.4.0",
+    "@huggingface/transformers": "^3.7.6"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

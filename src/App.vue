@@ -122,38 +122,68 @@
         </div>
       </div>
 
+      <!-- Model Loading Status -->
+      <div v-if="modelLoading" class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex items-center gap-3">
+          <svg class="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-blue-900">{{ loadingStatus }}</p>
+            <div v-if="loadingProgress > 0" class="mt-2 w-full bg-blue-200 rounded-full h-2">
+              <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" :style="{ width: loadingProgress + '%' }"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Info Footer -->
       <footer class="text-center mt-8 text-gray-600 text-sm">
-        <p>Note: This is a UI demo. Connect to a translation API for actual translations.</p>
+        <p>Powered by Transformers.js - Translation runs locally in your browser</p>
       </footer>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { pipeline, env } from '@huggingface/transformers'
 
+// Disable browser cache for models
+env.useBrowserCache = false
+
+// Language codes for NLLB model (Facebook's No Language Left Behind)
 const languages = [
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'es', name: 'Spanish', flag: '🇪🇸' },
-  { code: 'fr', name: 'French', flag: '🇫🇷' },
-  { code: 'de', name: 'German', flag: '🇩🇪' },
-  { code: 'it', name: 'Italian', flag: '🇮🇹' },
-  { code: 'pt', name: 'Portuguese', flag: '🇵🇹' },
-  { code: 'ru', name: 'Russian', flag: '🇷🇺' },
-  { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
-  { code: 'ko', name: 'Korean', flag: '🇰🇷' },
-  { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
-  { code: 'ar', name: 'Arabic', flag: '🇸🇦' },
-  { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+  { code: 'eng_Latn', name: 'English', flag: '🇬🇧' },
+  { code: 'spa_Latn', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'fra_Latn', name: 'French', flag: '🇫🇷' },
+  { code: 'deu_Latn', name: 'German', flag: '🇩🇪' },
+  { code: 'ita_Latn', name: 'Italian', flag: '🇮🇹' },
+  { code: 'por_Latn', name: 'Portuguese', flag: '🇵🇹' },
+  { code: 'rus_Cyrl', name: 'Russian', flag: '🇷🇺' },
+  { code: 'jpn_Jpan', name: 'Japanese', flag: '🇯🇵' },
+  { code: 'kor_Hang', name: 'Korean', flag: '🇰🇷' },
+  { code: 'zho_Hans', name: 'Chinese (Simplified)', flag: '🇨🇳' },
+  { code: 'arb_Arab', name: 'Arabic', flag: '🇸🇦' },
+  { code: 'hin_Deva', name: 'Hindi', flag: '🇮🇳' },
+  { code: 'tur_Latn', name: 'Turkish', flag: '🇹🇷' },
+  { code: 'nld_Latn', name: 'Dutch', flag: '🇳🇱' },
+  { code: 'pol_Latn', name: 'Polish', flag: '🇵🇱' },
 ]
 
-const sourceLang = ref('en')
-const targetLang = ref('es')
+const sourceLang = ref('eng_Latn')
+const targetLang = ref('spa_Latn')
 const sourceText = ref('')
 const translatedText = ref('')
 const isTranslating = ref(false)
 const copied = ref(false)
+const modelLoading = ref(false)
+const loadingStatus = ref('')
+const loadingProgress = ref(0)
+
+// Translation pipeline instance
+let translator = null
 
 const swapLanguages = () => {
   const temp = sourceLang.value
@@ -169,18 +199,64 @@ const handleInput = () => {
   // Auto-translate could be implemented here with debouncing
 }
 
+const initializeModel = async () => {
+  if (translator) return // Already initialized
+  
+  try {
+    modelLoading.value = true
+    loadingStatus.value = 'Loading translation model...'
+    loadingProgress.value = 0
+    
+    // Create translation pipeline with progress callback
+    translator = await pipeline('translation', 'Xenova/nllb-200-distilled-600M', {
+      progress_callback: (progress) => {
+        if (progress.status === 'downloading') {
+          loadingStatus.value = `Downloading model: ${progress.file}`
+          loadingProgress.value = progress.progress || 0
+        } else if (progress.status === 'loading') {
+          loadingStatus.value = 'Loading model into memory...'
+          loadingProgress.value = 90
+        } else if (progress.status === 'ready') {
+          loadingStatus.value = 'Model ready!'
+          loadingProgress.value = 100
+        }
+      }
+    })
+    
+    // Small delay to show completion
+    await new Promise(resolve => setTimeout(resolve, 500))
+    modelLoading.value = false
+  } catch (error) {
+    console.error('Error loading model:', error)
+    loadingStatus.value = 'Error loading model. Please refresh the page.'
+    modelLoading.value = false
+  }
+}
+
 const translate = async () => {
   if (!sourceText.value) return
   
-  isTranslating.value = true
-  
-  // Simulate API call - Replace this with actual translation API
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  // Demo translation (just reverses the text as placeholder)
-  translatedText.value = `[${targetLang.value.toUpperCase()}] ${sourceText.value}`
-  
-  isTranslating.value = false
+  try {
+    isTranslating.value = true
+    
+    // Initialize model if not already loaded
+    if (!translator) {
+      await initializeModel()
+    }
+    
+    // Perform translation
+    const result = await translator(sourceText.value, {
+      src_lang: sourceLang.value,
+      tgt_lang: targetLang.value,
+    })
+    
+    translatedText.value = result[0].translation_text
+  } catch (error) {
+    console.error('Translation error:', error)
+    translatedText.value = 'Error: Translation failed. Please try again.'
+  } finally {
+    isTranslating.value = false
+  }
 }
 
 const clearText = () => {
@@ -199,4 +275,10 @@ const copyToClipboard = async () => {
     console.error('Failed to copy:', err)
   }
 }
+
+// Initialize model on component mount
+onMounted(() => {
+  // Preload the model on mount
+  initializeModel()
+})
 </script>
