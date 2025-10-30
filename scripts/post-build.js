@@ -35,5 +35,17 @@ if (iconsCopied === icons.length) {
   console.warn(`⚠️  Only ${iconsCopied}/${icons.length} icons found. See public/ICONS.md for instructions.`);
 }
 
+// Copy background.js (service worker)
+const backgroundSrc = 'src/background.js';
+const backgroundDest = 'dist/background.js';
+
+if (existsSync(backgroundSrc)) {
+  copyFileSync(backgroundSrc, backgroundDest);
+  console.log('✅ Copied background.js to dist/');
+} else {
+  console.error('❌ background.js not found in src/');
+  process.exit(1);
+}
+
 console.log('\n✨ Extension build complete!');
 console.log('📁 Load the "dist" folder in Chrome as an unpacked extension.');

@@ -9,22 +9,6 @@
         <p class="text-sm md:text-base text-gray-600">Translate text between languages instantly</p>
       </header>
 
-      <!-- Model Loading Status -->
-      <div v-if="modelLoading" class="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div class="flex items-center gap-3">
-          <svg class="animate-spin h-5 w-5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-blue-900">{{ loadingStatus }}</p>
-            <div v-if="loadingProgress > 0" class="mt-2 w-full bg-blue-200 rounded-full h-2">
-              <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" :style="{ width: loadingProgress + '%' }"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Main Translation Card -->
       <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
         <!-- Language Selection -->
@@ -123,18 +107,41 @@
         <div class="mt-6 text-center">
           <button 
             @click="translate"
-            :disabled="!sourceText || isTranslating"
+            :disabled="!sourceText || isTranslating || modelLoading"
             class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md transition-colors duration-200"
           >
-            <span v-if="!isTranslating">Translate</span>
-            <span v-else class="flex items-center justify-center gap-2">
+            <span v-if="modelLoading" class="inline-flex items-center justify-center gap-2">
+              <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Loading Model...
+            </span>
+            <span v-else-if="isTranslating" class="inline-flex items-center justify-center gap-2">
               <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               Translating...
             </span>
+            <span v-else>Translate</span>
           </button>
+        </div>
+      </div>
+
+      <!-- Model Loading Status -->
+      <div v-if="modelLoading" class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex items-center gap-3">
+          <svg class="animate-spin h-5 w-5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-blue-900">{{ loadingStatus }}</p>
+            <div v-if="loadingProgress > 0" class="mt-2 w-full bg-blue-200 rounded-full h-2">
+              <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" :style="{ width: loadingProgress + '%' }"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -159,14 +166,15 @@ if (isExtension) {
   env.allowLocalModels = false
   env.allowRemoteModels = true
   env.backends.onnx.wasm.wasmPaths = '/assets/'
-  console.log('Running in Chrome extension mode')
+  // Enable caching to persist model between sessions
+  env.useBrowserCache = true
+  env.cacheDir = 'transformers-cache'
+  console.log('Running in Chrome extension mode with caching enabled')
 } else {
-  // Web app: use default CDN settings
+  // Web app: disable caching to avoid issues, use CDN directly
+  env.useBrowserCache = false
   console.log('Running in web app mode')
 }
-
-// Disable browser cache for development
-env.useBrowserCache = false
 
 // Language codes for NLLB model (Facebook's No Language Left Behind)
 const languages = [
@@ -215,7 +223,7 @@ const handleInput = () => {
 }
 
 const initializeModel = async () => {
-  if (translator) return // Already initialized
+  if (translator || modelLoading.value) return // Already initialized
   
   try {
     modelLoading.value = true
@@ -291,9 +299,57 @@ const copyToClipboard = async () => {
   }
 }
 
+// Wait for model to be ready
+const waitForModel = async () => {
+  let attempts = 0
+  const maxAttempts = 1500 // 5 minutes max (300 seconds)
+  
+  while ((!translator || modelLoading.value) && attempts < maxAttempts) {
+    await new Promise(resolve => setTimeout(resolve, 200))
+    attempts++
+  }
+  
+  return translator !== null
+}
+
+// Check for selected text from context menu (Chrome extension only)
+const checkForSelectedText = async () => {
+  if (!isExtension) return false
+  
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getSelectedText' })
+    if (response && response.text && response.text.trim()) {
+      sourceText.value = response.text
+      return true
+    }
+  } catch (err) {
+    console.log('No selected text or not in extension context')
+  }
+  
+  return false
+}
+
+// Auto-translate when model loads if source text is present
+const autoTranslateOnModelLoad = async () => {
+  // Wait for model to be ready
+  const modelReady = await waitForModel()
+
+  if (modelReady) {
+    await translate()
+  } else {
+    console.log('Model not ready yet, user can manually translate')
+  }
+}
+
 // Initialize model on component mount
-onMounted(() => {
-  // Preload the model on mount
+onMounted(async () => {
+  // Start preloading the model
   initializeModel()
+  
+  // Check for selected text from context menu (sets sourceText if found)
+  await checkForSelectedText()
+  
+  // Auto-translate if there's text in sourceText
+  await autoTranslateOnModelLoad()
 })
 </script>

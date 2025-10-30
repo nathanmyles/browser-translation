@@ -8,8 +8,12 @@
     "default_title": "Browser Translation"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "contextMenus"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "host_permissions": [
     "https://huggingface.co/*",
     "https://cdn-lfs.huggingface.co/*"
