@@ -2,7 +2,7 @@
   <IconButton 
     @click="$emit('click')"
     :disabled="disabled"
-    title="Speak translation"
+    :title="speaking ? 'Stop speaking' : 'Speak translation'"
   >
     <LoadingSpinner v-if="loading" class="text-blue-600" />
     <svg v-else-if="speaking" class="w-5 h-5 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">

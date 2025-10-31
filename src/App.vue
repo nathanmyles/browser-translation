@@ -61,7 +61,7 @@
               <div class="flex gap-2">
                 <SpeakButton 
                   @click="speakTranslation"
-                  :disabled="isSpeaking || isLoadingTTS"
+                  :disabled="isLoadingTTS"
                   :loading="isLoadingTTS"
                   :speaking="isSpeaking"
                 />
@@ -321,20 +321,28 @@ const copyToClipboard = async () => {
 }
 
 const speakTranslation = async () => {
-  if (!translatedText.value || isSpeaking.value || isLoadingTTS.value) return
+  if (!translatedText.value) return
+  
+  // If already speaking, stop it
+  if (isSpeaking.value && currentAudio) {
+    currentAudio.stop()
+    currentAudio = null
+    isSpeaking.value = false
+    isLoadingTTS.value = false
+    return
+  }
   
   try {
     isLoadingTTS.value = true
     
     // Stop any currently playing audio
     if (currentAudio) {
-      currentAudio.pause()
+      currentAudio.stop()
       currentAudio = null
     }
     
     // Map NLLB language codes to MMS-TTS language codes
     const langMap = {
-      'eng_Latn': 'eng',
       'spa_Latn': 'spa',
       'fra_Latn': 'fra',
       'deu_Latn': 'deu',
