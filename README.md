@@ -128,3 +128,9 @@ The first time you use the extension, the translation model (~300MB) and TTS mod
 
 - **Chrome/Edge** - Full support (Manifest V3)
 - **Web app** - Any modern browser with WebAssembly support (Chrome, Firefox, Safari, Edge)
+
+---
+
+## 🎵 Built with Windsurf
+
+This project was entirely vibe-coded using [Windsurf](https://windsurf.com/editor) - an AI pair programmer that helped bring this translation extension to life through natural conversation and iterative development.
