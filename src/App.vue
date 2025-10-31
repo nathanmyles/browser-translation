@@ -13,17 +13,11 @@
       <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
         <!-- Language Selection -->
         <div class="flex items-center gap-3 mb-6">
-          <div class="flex-1 min-w-0">
-            <label class="block text-sm font-medium text-gray-700 mb-2">From</label>
-            <select 
-              v-model="sourceLang"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition text-sm"
-            >
-              <option v-for="lang in languages" :key="lang.code" :value="lang.code">
-                {{ lang.flag }} {{ lang.name }}
-              </option>
-            </select>
-          </div>
+          <LanguageSelector 
+            v-model="sourceLang" 
+            label="From" 
+            :languages="languages" 
+          />
 
           <!-- Swap Button -->
           <button 
@@ -36,79 +30,59 @@
             </svg>
           </button>
 
-          <div class="flex-1 min-w-0">
-            <label class="block text-sm font-medium text-gray-700 mb-2">To</label>
-            <select 
-              v-model="targetLang"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition text-sm"
-            >
-              <option v-for="lang in languages" :key="lang.code" :value="lang.code">
-                {{ lang.flag }} {{ lang.name }}
-              </option>
-            </select>
-          </div>
+          <LanguageSelector 
+            v-model="targetLang" 
+            label="To" 
+            :languages="languages" 
+          />
         </div>
 
         <!-- Translation Areas -->
         <div class="grid md:grid-cols-2 gap-6">
           <!-- Source Text -->
-          <div class="relative">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Source Text</label>
-            <div class="relative" @mouseenter="sourceTextFocused = true" @mouseleave="sourceTextFocused = false">
-              <textarea
-                v-model="sourceText"
-                @input="handleInput"
-                @focus="sourceTextFocused = true"
-                @blur="sourceTextFocused = false"
-                placeholder="Enter text to translate..."
-                class="w-full h-24 md:h-40 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none transition"
-              ></textarea>
-              <button 
-                v-if="sourceText && sourceTextFocused"
+          <TranslationTextArea
+            v-model="sourceText"
+            label="Source Text"
+            placeholder="Enter text to translate..."
+            @update:modelValue="handleInput"
+          >
+            <template #actions>
+              <IconButton 
                 @click="clearText"
-                class="absolute top-3 right-3 p-2 bg-white hover:bg-red-50 rounded-lg shadow-sm transition-all duration-200"
+                hover-color="bg-red-50"
                 title="Clear text"
               >
                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-              </button>
-            </div>
-          </div>
+              </IconButton>
+            </template>
+          </TranslationTextArea>
 
           <!-- Translated Text -->
-          <div class="relative">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Translation</label>
-            <div class="relative" @mouseenter="translatedTextFocused = true" @mouseleave="translatedTextFocused = false">
-              <textarea
-                v-model="translatedText"
-                readonly
-                @focus="translatedTextFocused = true"
-                @blur="translatedTextFocused = false"
-                placeholder="Translation will appear here..."
-                class="w-full h-24 md:h-40 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 resize-none outline-none"
-              ></textarea>
-              <div v-if="translatedText && translatedTextFocused" class="absolute top-3 right-3 flex gap-2">
-                <button 
+          <TranslationTextArea
+            v-model="translatedText"
+            label="Translation"
+            placeholder="Translation will appear here..."
+            readonly
+          >
+            <template #actions>
+              <div class="flex gap-2">
+                <IconButton 
                   @click="speakTranslation"
                   :disabled="isSpeaking || isLoadingTTS"
-                  class="p-2 bg-white hover:bg-gray-100 disabled:bg-gray-200 rounded-lg shadow-sm transition-colors duration-200"
                   title="Speak translation"
                 >
-                  <svg v-if="isLoadingTTS" class="w-5 h-5 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <LoadingSpinner v-if="isLoadingTTS" class="text-blue-600" />
                   <svg v-else-if="isSpeaking" class="w-5 h-5 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                   </svg>
                   <svg v-else class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                   </svg>
-                </button>
-                <button 
+                </IconButton>
+                <IconButton 
                   @click="copyToClipboard"
-                  class="p-2 bg-white hover:bg-gray-100 rounded-lg shadow-sm transition-colors duration-200"
                   title="Copy to clipboard"
                 >
                   <svg v-if="!copied" class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,13 +91,13 @@
                   <svg v-else class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                   </svg>
-                </button>
+                </IconButton>
               </div>
-            </div>
-            <div class="flex justify-end items-center mt-2">
+            </template>
+            <template #footer>
               <span v-if="copied" class="text-sm text-green-600">Copied!</span>
-            </div>
-          </div>
+            </template>
+          </TranslationTextArea>
         </div>
 
         <!-- Translate Button -->
@@ -134,17 +108,11 @@
             class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md transition-colors duration-200"
           >
             <span v-if="isTranslating" class="inline-flex items-center justify-center gap-2">
-              <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <LoadingSpinner />
               Translating...
             </span>
             <span v-else-if="modelLoading" class="inline-flex items-center justify-center gap-2">
-              <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <LoadingSpinner />
               Loading Model...
             </span>
             <span v-else>Translate</span>
@@ -153,27 +121,11 @@
       </div>
 
       <!-- Model Loading Status -->
-      <div v-if="modelLoading" class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div class="flex items-start gap-3">
-          <svg class="animate-spin h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <div class="flex-1 min-w-0 space-y-3">
-            <p class="text-sm font-medium text-blue-900">{{ loadingStatus }}</p>
-            <!-- Individual file progress bars -->
-            <div v-for="(file, filename) in fileProgress" :key="filename" class="space-y-1">
-              <div class="flex justify-between items-center text-xs">
-                <span class="text-blue-800 font-mono truncate">{{ filename }}</span>
-                <span class="text-blue-600 ml-2 flex-shrink-0">{{ Math.round(file.progress) }}%</span>
-              </div>
-              <div class="w-full bg-blue-200 rounded-full h-1.5">
-                <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" :style="{ width: file.progress + '%' }"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ModelLoadingStatus 
+        :is-loading="modelLoading"
+        :status="loadingStatus"
+        :file-progress="fileProgress"
+      />
 
       <!-- Info Footer -->
       <footer class="text-center mt-8 text-gray-600 text-sm">
@@ -186,6 +138,11 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { pipeline, env } from '@huggingface/transformers'
+import LanguageSelector from './components/LanguageSelector.vue'
+import TranslationTextArea from './components/TranslationTextArea.vue'
+import IconButton from './components/IconButton.vue'
+import LoadingSpinner from './components/LoadingSpinner.vue'
+import ModelLoadingStatus from './components/ModelLoadingStatus.vue'
 
 // Detect if running in Chrome extension
 const isExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id
@@ -237,8 +194,6 @@ const loadingProgress = ref(0)
 const fileProgress = ref({})
 const isSpeaking = ref(false)
 const isLoadingTTS = ref(false)
-const sourceTextFocused = ref(false)
-const translatedTextFocused = ref(false)
 
 // Translation pipeline instance
 let translator = null
