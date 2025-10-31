@@ -44,7 +44,6 @@
             v-model="sourceText"
             label="Source Text"
             placeholder="Enter text to translate..."
-            @update:modelValue="handleInput"
           >
             <template #actions>
               <ClearButton @click="clearText" />
@@ -136,11 +135,9 @@ if (isExtension) {
   // Enable caching to persist model between sessions
   env.useBrowserCache = true
   env.cacheDir = 'transformers-cache'
-  console.log('Running in Chrome extension mode with caching enabled')
 } else {
   // Web app: disable caching to avoid issues, use CDN directly
   env.useBrowserCache = false
-  console.log('Running in web app mode')
 }
 
 // Language codes for NLLB model (Facebook's No Language Left Behind)
@@ -170,7 +167,6 @@ const isTranslating = ref(false)
 const copied = ref(false)
 const modelLoading = ref(false)
 const loadingStatus = ref('')
-const loadingProgress = ref(0)
 const fileProgress = ref({})
 const isSpeaking = ref(false)
 const isLoadingTTS = ref(false)
@@ -225,12 +221,8 @@ const loadLanguagePreferences = async () => {
       }
     }
   } catch (err) {
-    console.log('Could not load language preferences:', err)
+    // Silently fail if preferences can't be loaded
   }
-}
-
-const handleInput = () => {
-  // Auto-translate could be implemented here with debouncing
 }
 
 const initializeModel = async () => {
@@ -239,7 +231,6 @@ const initializeModel = async () => {
   try {
     modelLoading.value = true
     loadingStatus.value = 'Loading translation model...'
-    loadingProgress.value = 0
     
     // Create translation pipeline with progress callback
     translator = await pipeline('translation', 'Xenova/nllb-200-distilled-600M', {
@@ -365,7 +356,6 @@ const speakTranslation = async () => {
     
     // Initialize TTS model if not loaded or language changed
     if (!ttsModel || ttsModel.modelName !== modelName) {
-      console.log(`Loading TTS model: ${modelName}`)
       ttsModel = await pipeline('text-to-speech', modelName, {
         quantized: false, // Remove this line to use the quantized version (default)
       })
@@ -437,7 +427,7 @@ const checkForSelectedText = async () => {
       return true
     }
   } catch (err) {
-    console.log('No selected text or not in extension context')
+    // Not in extension context or no selected text
   }
   
   return false
@@ -452,8 +442,6 @@ const autoTranslateOnModelLoad = async () => {
     await translate()
     // Note: We no longer auto-replace text from the popup
     // The "Replace with translation" context menu option handles that via offscreen document
-  } else {
-    console.log('Model not ready yet, user can manually translate')
   }
 }
 
