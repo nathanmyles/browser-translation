@@ -47,15 +47,7 @@
             @update:modelValue="handleInput"
           >
             <template #actions>
-              <IconButton 
-                @click="clearText"
-                hover-color="bg-red-50"
-                title="Clear text"
-              >
-                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </IconButton>
+              <ClearButton @click="clearText" />
             </template>
           </TranslationTextArea>
 
@@ -68,30 +60,16 @@
           >
             <template #actions>
               <div class="flex gap-2">
-                <IconButton 
+                <SpeakButton 
                   @click="speakTranslation"
                   :disabled="isSpeaking || isLoadingTTS"
-                  title="Speak translation"
-                >
-                  <LoadingSpinner v-if="isLoadingTTS" class="text-blue-600" />
-                  <svg v-else-if="isSpeaking" class="w-5 h-5 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                  </svg>
-                  <svg v-else class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                  </svg>
-                </IconButton>
-                <IconButton 
+                  :loading="isLoadingTTS"
+                  :speaking="isSpeaking"
+                />
+                <CopyButton 
                   @click="copyToClipboard"
-                  title="Copy to clipboard"
-                >
-                  <svg v-if="!copied" class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <svg v-else class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </IconButton>
+                  :copied="copied"
+                />
               </div>
             </template>
             <template #footer>
@@ -140,7 +118,9 @@ import { ref, onMounted, watch } from 'vue'
 import { pipeline, env } from '@huggingface/transformers'
 import LanguageSelector from './components/LanguageSelector.vue'
 import TranslationTextArea from './components/TranslationTextArea.vue'
-import IconButton from './components/IconButton.vue'
+import ClearButton from './components/ClearButton.vue'
+import SpeakButton from './components/SpeakButton.vue'
+import CopyButton from './components/CopyButton.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
 import ModelLoadingStatus from './components/ModelLoadingStatus.vue'
 
